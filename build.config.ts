@@ -40,4 +40,5 @@ export default defineBuildConfig({
     "firebase-functions",
     "@scalar/api-reference",
   ],
+  failOnWarn: false,
 });

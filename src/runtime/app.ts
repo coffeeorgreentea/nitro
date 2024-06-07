@@ -28,6 +28,10 @@ import type { $Fetch, NitroFetchRequest } from "nitropack";
 import { plugins } from "#internal/nitro/virtual/plugins";
 import errorHandler from "#internal/nitro/virtual/error-handler";
 import { handlers } from "#internal/nitro/virtual/server-handlers";
+import { initRPC } from "./zitro-rpc";
+import { initSubscriptions } from "./zitro-subscription";
+import { initQueues } from "./zitro-queue";
+import { initNodes } from "./magick-node";
 
 export interface NitroApp {
   h3App: H3App;
@@ -199,6 +203,14 @@ function createNitroApp(): NitroApp {
       throw error;
     }
   }
+
+  /* Zitro */
+  initRPC(app);
+  initQueues();
+  initSubscriptions();
+
+  /* Magick */
+  initNodes();
 
   return app;
 }

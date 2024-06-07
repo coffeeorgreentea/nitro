@@ -23,4 +23,29 @@ export const nitroImports: Preset[] = [
       "defineNitroErrorHandler",
     ],
   },
+  {
+    from: "#internal/nitro/zitro",
+    imports: [
+      "defineQueue",
+      "addJobToQueue",
+      "defineSubscription",
+      "defineRPCRouter",
+    ],
+  },
+  {
+    from: "#internal/nitro/magick",
+    imports: [
+      "defineNode",
+      "defineFlowNode",
+      "defineAsyncNode",
+      "defineEventNode",
+      "defineFunctionNode",
+      "initNodes",
+      "triggerAgentMessage",
+      "triggerAgentError",
+      "triggerAgentWarn",
+      "triggerAgentLog",
+      "triggerAgentCommand",
+    ],
+  },
 ];

@@ -30,6 +30,56 @@ import type {
 } from "../presets/_types.gen";
 import { NitroModule, NitroModuleInput } from "./module";
 import { ProviderName } from "std-env";
+import { AnyRouter } from "@trpc/server";
+
+/* START -- ZITRO */
+export interface RPCRouter {
+  name: string;
+  handler: string;
+}
+
+export interface RPCContext {
+  name: string;
+  handler: string;
+}
+
+export interface Queue {
+  name: string;
+  handler: string;
+}
+
+export interface Node {
+  name: string;
+  handler: string;
+}
+
+export enum ZitroConfigFileName {
+  context = "context",
+  middleware = "middleware",
+  options = "options",
+  shield = "shield",
+}
+
+interface Zitro {
+  scannedRPCRouters: RPCRouter[];
+  scannedConfig: { name: ZitroConfigFileName; handler: string }[];
+  scannedSubscriptions: { name: string; handler: string; topic: string }[];
+  scannedQueues: Queue[];
+}
+
+/* END -- ZITRO */
+
+/* START -- MAGICK */
+export interface Node {
+  name: string;
+  handler: string;
+}
+
+interface Magick {
+  scannedNodes: Node[];
+}
+
+/* END -- MAGICK */
 
 export type NitroDynamicConfig = Pick<
   NitroConfig,
@@ -55,6 +105,8 @@ export interface NitroRuntimeConfig {
 }
 
 export interface Nitro {
+  zitro: Zitro;
+  magick: Magick;
   options: NitroOptions;
   scannedHandlers: NitroEventHandler[];
   vfs: Record<string, string>;

@@ -1,0 +1,292 @@
+File: ./commands/task/list.ts
+import { defineCommand } from "citty";
+import { resolve } from "pathe";
+import { consola } from "consola";
+import { listTasks } from "../../../task";
+
+export default defineCommand({
+  meta: {
+    name: "run",
+    description: "List available tasks (experimental)",
+  },
+  args: {
+    dir: {
+      type: "string",
+      description: "project root directory",
+    },
+  },
+  async run({ args }) {
+    const cwd = resolve((args.dir || args.cwd || ".") as string);
+    const tasks = await listTasks({ cwd, buildDir: ".nitro" });
+    for (const [name, task] of Object.entries(tasks)) {
+      consola.log(
+        ` - \`${name}\`${
+          task.meta?.description ? ` - ${task.meta.description}` : ""
+        }`
+      );
+    }
+  },
+});
+
+
+File: ./commands/task/index.ts
+import { defineCommand } from "citty";
+
+export default defineCommand({
+  meta: {
+    name: "task",
+    description: "Operate in nitro tasks (experimental)",
+  },
+  subCommands: {
+    list: () => import("./list").then((r) => r.default),
+    run: () => import("./run").then((r) => r.default),
+  },
+});
+
+
+File: ./commands/task/run.ts
+import { defineCommand } from "citty";
+import { resolve } from "pathe";
+import destr from "destr";
+import { consola } from "consola";
+import { runTask } from "../../../task";
+
+export default defineCommand({
+  meta: {
+    name: "run",
+    description:
+      "Run a runtime task in the currently running dev server (experimental)",
+  },
+  args: {
+    name: {
+      type: "positional",
+      description: "task name",
+      required: true,
+    },
+    dir: {
+      type: "string",
+      description: "project root directory",
+    },
+    payload: {
+      type: "string",
+      description: "payload json to pass to the task",
+    },
+  },
+  async run({ args }) {
+    const cwd = resolve((args.dir || args.cwd || ".") as string);
+    consola.info(`Running task \`${args.name}\`...`);
+    let payload: any = destr(args.payload || "{}");
+    if (typeof payload !== "object") {
+      consola.error(
+        `Invalid payload: \`${args.payload}\` (it should be a valid JSON object)`
+      );
+      payload = undefined;
+    }
+    try {
+      const { result } = await runTask(
+        {
+          name: args.name,
+          context: {},
+          payload,
+        },
+        {
+          cwd,
+          buildDir: ".nitro",
+        }
+      );
+      consola.success("Result:", result);
+    } catch (error) {
+      consola.error(`Failed to run task \`${args.name}\`: ${error}`);
+      process.exit(1); // eslint-disable-line unicorn/no-process-exit
+    }
+  },
+});
+
+
+File: ./commands/prepare.ts
+import { defineCommand } from "citty";
+import { resolve } from "pathe";
+import { createNitro } from "../../nitro";
+import { writeTypes } from "../../build";
+import { commonArgs } from "../common";
+
+export default defineCommand({
+  meta: {
+    name: "prepare",
+    description: "Generate types for the project",
+  },
+  args: {
+    ...commonArgs,
+  },
+  async run({ args }) {
+    const rootDir = resolve((args.dir || args._dir || ".") as string);
+    const nitro = await createNitro({ rootDir });
+    await writeTypes(nitro);
+  },
+});
+
+
+File: ./commands/build.ts
+import { defineCommand } from "citty";
+import { resolve } from "pathe";
+import { createNitro } from "../../nitro";
+import { build, prepare, copyPublicAssets } from "../../build";
+import { prerender } from "../../prerender";
+import { commonArgs } from "../common";
+
+export default defineCommand({
+  meta: {
+    name: "build",
+    description: "Build nitro project for production",
+  },
+  args: {
+    ...commonArgs,
+    minify: {
+      type: "boolean",
+      description:
+        "Minify the output (overrides preset defaults you can also use `--no-minify` to disable).",
+    },
+    preset: {
+      type: "string",
+      description:
+        "The build preset to use (you can also use `NITRO_PRESET` environment variable).",
+    },
+    compatibilityDate: {
+      type: "string",
+      description:
+        "The date to use for preset compatibility (you can also use `NITRO_COMPATIBILITY_DATE` environment variable).",
+    },
+  },
+  async run({ args }) {
+    const rootDir = resolve((args.dir || args._dir || ".") as string);
+    const nitro = await createNitro(
+      {
+        rootDir,
+        dev: false,
+        minify: args.minify,
+        preset: args.preset,
+      },
+      {
+        compatibilityDate: args.compatibilityDate || "2024-05-17",
+      }
+    );
+    await prepare(nitro);
+    await copyPublicAssets(nitro);
+    await prerender(nitro);
+    await build(nitro);
+    await nitro.close();
+  },
+});
+
+
+File: ./commands/dev.ts
+import { ParsedArgs, defineCommand } from "citty";
+import { resolve } from "pathe";
+import { consola } from "consola";
+import { getArgs, parseArgs } from "listhen/cli";
+import { createNitro } from "../../nitro";
+import { build, prepare } from "../../build";
+import { createDevServer } from "../../dev/server";
+import { commonArgs } from "../common";
+import type { Nitro } from "../../types";
+
+const hmrKeyRe = /^runtimeConfig\.|routeRules\./;
+
+export default defineCommand({
+  meta: {
+    name: "dev",
+    description: "Start the development server",
+  },
+  args: {
+    ...commonArgs,
+    ...getArgs(),
+  },
+  async run({ args }) {
+    const rootDir = resolve((args.dir || args._dir || ".") as string);
+    let nitro: Nitro;
+    const reload = async () => {
+      if (nitro) {
+        consola.info("Restarting dev server...");
+        if ("unwatch" in nitro.options._c12) {
+          await nitro.options._c12.unwatch();
+        }
+        await nitro.close();
+      }
+      nitro = await createNitro(
+        {
+          rootDir,
+          dev: true,
+          preset: "nitro-dev",
+        },
+        {
+          watch: true,
+          c12: {
+            async onUpdate({ getDiff, newConfig }) {
+              const diff = getDiff();
+
+              if (diff.length === 0) {
+                return; // No changes
+              }
+
+              consola.info(
+                "Nitro config updated:\n" +
+                  diff.map((entry) => `  ${entry.toString()}`).join("\n")
+              );
+
+              await (diff.every((e) => hmrKeyRe.test(e.key))
+                ? nitro.updateConfig(newConfig.config || {}) // Hot reload
+                : reload()); // Full reload
+            },
+          },
+        }
+      );
+      nitro.hooks.hookOnce("restart", reload);
+      const server = createDevServer(nitro);
+      const listhenOptions = parseArgs(args);
+      await server.listen(listhenOptions.port || 3000, listhenOptions);
+      await prepare(nitro);
+      await build(nitro);
+    };
+    await reload();
+  },
+});
+
+
+File: ./index.ts
+#!/usr/bin/env node
+import { defineCommand, runMain } from "citty";
+import nitroPkg from "../../package.json";
+
+const main = defineCommand({
+  meta: {
+    name: nitroPkg.name,
+    description: "Nitro CLI",
+    version: nitroPkg.version,
+  },
+  subCommands: {
+    dev: () => import("./commands/dev").then((r) => r.default),
+    build: () => import("./commands/build").then((r) => r.default),
+    prepare: () => import("./commands/prepare").then((r) => r.default),
+    task: () => import("./commands/task").then((r) => r.default),
+  },
+});
+
+runMain(main);
+
+
+File: ./common.ts
+import type { ArgsDef } from "citty";
+
+export const commonArgs = <ArgsDef>{
+  dir: {
+    type: "string",
+    description: "project root directory",
+  },
+  _dir: {
+    type: "positional",
+    default: ".",
+    description: "project root directory (prefer using `--dir`)",
+  },
+};
+
+

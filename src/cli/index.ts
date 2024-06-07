@@ -13,6 +13,8 @@ const main = defineCommand({
     build: () => import("./commands/build").then((r) => r.default),
     prepare: () => import("./commands/prepare").then((r) => r.default),
     task: () => import("./commands/task").then((r) => r.default),
+    generate: () => import("./commands/generate").then((r) => r.default),
+    proxy: () => import("./commands/proxy").then((r) => r.default),
   },
 });
 

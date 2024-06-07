@@ -32,6 +32,8 @@ import type { Nitro, NitroTypes, NitroBuildInfo } from "./types";
 import { runtimeDir } from "./dirs";
 import { snapshotStorage } from "./storage";
 import { compressPublicAssets } from "./compress";
+import { scanZitroPaths } from "./zitro-scan";
+import { scanMagickPaths } from "./magick-scan";
 
 export async function prepare(nitro: Nitro) {
   await prepareDir(nitro.options.output.dir);
@@ -445,6 +447,9 @@ async function _snapshot(nitro: Nitro) {
 
 async function _build(nitro: Nitro, rollupConfig: RollupConfig) {
   await scanHandlers(nitro);
+  await scanZitroPaths(nitro);
+  await scanMagickPaths(nitro);
+
   await writeTypes(nitro);
   await _snapshot(nitro);
 
@@ -567,6 +572,8 @@ async function _watch(nitro: Nitro, rollupConfig: RollupConfig) {
       await rollupWatcher.close();
     }
     await scanHandlers(nitro);
+    await scanZitroPaths(nitro);
+    await scanMagickPaths(nitro);
     rollupWatcher = startRollupWatcher(nitro, rollupConfig);
     await writeTypes(nitro);
   }
@@ -578,6 +585,10 @@ async function _watch(nitro: Nitro, rollupConfig: RollupConfig) {
     join(dir, "middleware", GLOB_SCAN_PATTERN),
     join(dir, "plugins"),
     join(dir, "modules"),
+    join(dir, "rpc"),
+    join(dir, "subscriptions"),
+    join(dir, "config"),
+    join(dir, "queues"),
   ]);
 
   const watchReloadEvents = new Set(["add", "addDir", "unlink", "unlinkDir"]);

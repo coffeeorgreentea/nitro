@@ -39,6 +39,11 @@ import { database } from "./plugins/database";
 import { importMeta } from "./plugins/import-meta";
 import { appConfig } from "./plugins/app-config";
 import { sourcemapMininify } from "./plugins/sourcemap-min";
+import { zitroRPC } from "./plugins/zitro-rpc";
+import { zitroConfig } from "./plugins/zitro-config";
+import { zitroSubscriptions } from "./plugins/zitro-subscriptions";
+import { zitroQueues } from "./plugins/zitro-queues";
+import { magickNodes } from "./plugins/magick-nodes";
 
 export type RollupConfig = InputOptions & { output: OutputOptions };
 
@@ -322,6 +327,15 @@ export const getRollupConfig = (nitro: Nitro): RollupConfig => {
   if (nitro.options.experimental.openAPI) {
     rollupConfig.plugins.push(handlersMeta(nitro));
   }
+
+  // Zitro
+  rollupConfig.plugins.push(zitroRPC(nitro));
+  rollupConfig.plugins.push(zitroConfig(nitro));
+  rollupConfig.plugins.push(zitroSubscriptions(nitro));
+  rollupConfig.plugins.push(zitroQueues(nitro));
+
+  // Magick
+  rollupConfig.plugins.push(magickNodes(nitro));
 
   // Polyfill
   rollupConfig.plugins.push(

@@ -29,6 +29,15 @@ export async function createNitro(
     vfs: {},
     logger: consola.withTag("nitro"),
     scannedHandlers: [],
+    zitro: {
+      scannedConfig: [],
+      scannedRPCRouters: [],
+      scannedSubscriptions: [],
+      scannedQueues: [],
+    },
+    magick: {
+      scannedNodes: [],
+    },
     close: () => nitro.hooks.callHook("close"),
     storage: undefined as any,
     async updateConfig(config: NitroDynamicConfig) {

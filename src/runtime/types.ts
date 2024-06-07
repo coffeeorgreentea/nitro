@@ -33,4 +33,16 @@ export interface NitroRuntimeHooks {
     response: Partial<RenderResponse>,
     context: { event: H3Event }
   ) => void;
+
+  // Agent events
+  "agent:message": (message: any) => void;
+  "agent:error": (error: any) => void;
+  "agent:warn": (warning: any) => void;
+  "agent:log": (log: any) => void;
+  "agent:command": (command: any) => void;
+
+  // Subscription events
+  "subscription:created": (subscription: any) => void;
+  "subscription:updated": (subscription: any) => void;
+  "subscription:deleted": (subscription: any) => void;
 }
