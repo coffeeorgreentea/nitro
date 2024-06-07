@@ -1,4 +1,10 @@
-# Nitro
+# Fork of Nitro
+
+This is a fork of the Nitro project.
+This experiement was to learn how Nitro works and how to extend its runtime.
+
+The original README is below.
+
 
 <!-- automd:badges -->
 
